@@ -4,32 +4,24 @@ This script comes from the RTRBM code by Ilya Sutskever from
 http://www.cs.utoronto.ca/~ilya/code/2008/RTRBM.tar
 """
 
-from numpy import *
-from scipy import *               
-import pdb
-import pickle
-import scipy.io
+import numpy as np
 
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import tqdm
 
-shape_std=shape
 def shape(A):
-    if isinstance(A, ndarray):
-        return shape_std(A)
+    if isinstance(A, np.ndarray):
+        return np.shape(A)
     else:
         return A.shape()
 
-size_std = size
 def size(A):
-    if isinstance(A, ndarray):
-        return size_std(A)
+    if isinstance(A, np.ndarray):
+        return np.size(A)
     else:
         return A.size()
-
-det = linalg.det
 
 def new_speeds(m1, m2, v1, v2):
     new_v2 = (2*m1*v1 + v2*(m2-m1))/(m1+m2)
@@ -37,25 +29,27 @@ def new_speeds(m1, m2, v1, v2):
     return new_v1, new_v2
     
 
-def norm(x): return sqrt((x**2).sum())
-def sigmoid(x):        return 1./(1.+exp(-x))
+def norm(x):
+    return np.sqrt((x**2).sum())
+
+def sigmoid(x):
+    return 1./(1.+np.exp(-x))
 
 SIZE=8
 # size of bounding box: SIZE X SIZE.
 
 def bounce_n(T=128, n=2, r=None, m=None, *, res):
-    aspect = (1.0, res[0] / res[1])
-    #size = (aspect[0]*SIZE, aspect[1]*SIZE)
+    if r is None: r=np.array([1.2]*n)
+    if m is None: m=np.array([1]*n)
+    aspect = (1.0, res[0]/res[1])
     size = (SIZE, SIZE)
-    if r is None: r=array([1.2]*n)
-    if m is None: m=array([1]*n)
     # r is to be rather small.
-    X=zeros((T, n, 2), dtype='float')
-    v = random.randn(n,2)
+    X=np.zeros((T, n, 2), dtype='float')
+    v = np.random.randn(n,2)
     v = v / norm(v)*.5
     good_config=False
     while not good_config:
-        x = 2+random.rand(n,2)*8
+        x = 2+np.random.rand(n,2)*8
         good_config=True
         for i in range(n):
             for z in range(2):
@@ -94,8 +88,8 @@ def bounce_n(T=128, n=2, r=None, m=None, *, res):
                         w    = aspect*x[i]-aspect*x[j]
                         w    = w / norm(w)
 
-                        v_i  = dot(w.transpose(),v[i])
-                        v_j  = dot(w.transpose(),v[j])
+                        v_i  = np.dot(w.transpose(),v[i])
+                        v_j  = np.dot(w.transpose(),v[j])
 
                         new_v_i, new_v_j = new_speeds(m[i], m[j], v_i, v_j)
                         
@@ -105,34 +99,34 @@ def bounce_n(T=128, n=2, r=None, m=None, *, res):
     return X
 
 def ar(x,y,z):
-    return z/2+arange(x,y,z,dtype='float')
+    return z/2+np.arange(x,y,z,dtype='float')
 
 def matricize(X,res,r=None):
 
-    T, n= shape(X)[0:2]
-    if r is None: r=array([1.2]*n)
+    T, n = np.shape(X)[0:2]
+    if r is None: r=np.array([1.2]*n)
 
-    A=zeros((T,res[0],res[1]), dtype='float')
+    A = np.zeros((T,res[0],res[1]), dtype='float')
     
-    [I, J]=meshgrid(ar(0,1,1./res[1])*SIZE, ar(0,1,1./res[0])*SIZE)
+    [I, J] = np.meshgrid(ar(0,1,1./res[1])*SIZE, ar(0,1,1./res[0])*SIZE)
 
     aspect = res[0] / res[1]
 
     for t in range(T):
         for i in range(n):
-            A[t]+= exp(-(  ((I-X[t,i,0])**2+((J-X[t,i,1])*aspect)**2)/(r[i]**2)  )**4    )
+            A[t] += np.exp(-(  ((I-X[t,i,0])**2+((J-X[t,i,1])*aspect)**2)/(r[i]**2)  )**4    )
             
         A[t][A[t]>1]=1
     return A
 
 def bounce_mat(res, n=2, T=128, r =None):
-    if r is None: r=array([1.2]*n)
+    if r is None: r=np.array([1.2]*n)
     x = bounce_n(T,n,r, res=res);
     A = matricize(x,res,r)
     return A
 
 def bounce_vec(res, n=2, T=128, r =None, m =None):
-    if r is None: r=array([1.2]*n)
+    if r is None: r=np.array([1.2]*n)
     x = bounce_n(T,n,r,m, res=res);
     V = matricize(x,res,r)
     return V.reshape(T, res[0], res[1])
@@ -151,31 +145,29 @@ def show_sample(V, res):
 if __name__ == "__main__":
     res=(32, 64)
     n = 3
-    r = array([0.6]*n)
-    #r = array([1.0]*n)
+    r = np.array([0.6]*n)
+    #r = np.array([1.0]*n)
     T=100
     #T=40
     #N=10
+
     N=4000
     dat=[]
     for i in tqdm.trange(N):
         dat.append(bounce_vec(res=res, n=n, T=T, r=r))
-    data={}
-    data['train']=array(dat)
+    train=np.array(dat)
     
     N=200
     dat=[]
     for i in tqdm.trange(N):
         dat.append(bounce_vec(res=res, n=n, T=T, r=r))
-    data['test']=array(dat)
+    test=np.array(dat)
 
     print("writing bouncing_balls_train.npy...")
-    save("bouncing_balls_train.npy", data['train'])
+    np.save("bouncing_balls_train.npy", train)
 
     print("writing bouncing_balls_test.npy...")
-    save("bouncing_balls_test.npy", data['test'])
-
-    #breakpoint()
+    np.save("bouncing_balls_test.npy", test)
     
     # show one video
     # show_sample(dat[1], res)
