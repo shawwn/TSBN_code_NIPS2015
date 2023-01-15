@@ -11,17 +11,6 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import tqdm
 
-def shape(A):
-    if isinstance(A, np.ndarray):
-        return np.shape(A)
-    else:
-        return A.shape()
-
-def size(A):
-    if isinstance(A, np.ndarray):
-        return np.size(A)
-    else:
-        return A.size()
 
 def new_speeds(m1, m2, v1, v2):
     new_v2 = (2*m1*v1 + v2*(m2-m1))/(m1+m2)
@@ -38,9 +27,7 @@ def sigmoid(x):
 SIZE=8
 # size of bounding box: SIZE X SIZE.
 
-def bounce_n(T=128, n=2, r=None, m=None, *, res):
-    if r is None: r=np.array([1.2]*n)
-    if m is None: m=np.array([1]*n)
+def bounce_n(*, T, n, r, m, res):
     aspect = (1.0, res[0]/res[1])
     size = (SIZE, SIZE)
     # r is to be rather small.
@@ -101,10 +88,9 @@ def bounce_n(T=128, n=2, r=None, m=None, *, res):
 def ar(x,y,z):
     return z/2+np.arange(x,y,z,dtype='float')
 
-def matricize(X,res,r=None):
+def matricize(X,*,res,r):
 
     T, n = np.shape(X)[0:2]
-    if r is None: r=np.array([1.2]*n)
 
     A = np.zeros((T,res[0],res[1]), dtype='float')
     
@@ -119,33 +105,26 @@ def matricize(X,res,r=None):
         A[t][A[t]>1]=1
     return A
 
-def bounce_mat(res, n=2, T=128, r =None):
-    if r is None: r=np.array([1.2]*n)
-    x = bounce_n(T,n,r, res=res);
-    A = matricize(x,res,r)
-    return A
-
-def bounce_vec(res, n=2, T=128, r =None, m =None):
-    if r is None: r=np.array([1.2]*n)
-    x = bounce_n(T,n,r,m, res=res);
-    V = matricize(x,res,r)
-    return V.reshape(T, res[0], res[1])
+def bounce_vec(*, res, n, T, r, m):
+    x = bounce_n(T=T,n=n,r=r,m=m, res=res);
+    V = matricize(x,res=res,r=r)
+    return V
 
 # make sure you have this folder
 logdir = './sample'
-def show_sample(V, res):
-    T   = len(V)
-    # res = int(sqrt(shape(V)[1]))
+def show_sample(V):
+    T = len(V)
     for t in tqdm.trange(T):
-        plt.imshow(V[t].reshape(res[0],res[1]),cmap=matplotlib.cm.Greys_r) 
+        plt.imshow(V[t],cmap=matplotlib.cm.Greys_r) 
         # Save it
-        fname = logdir+'/'+str(t)+'.png'
+        fname = f'{logdir}/{t}.png'
         plt.savefig(fname)
         
 if __name__ == "__main__":
     res=(32, 64)
     n = 3
-    r = np.array([0.6]*n)
+    m = np.array([1.0]*n) # speed
+    r = np.array([0.6]*n) # radius
     #r = np.array([1.0]*n)
     T=100
     #T=40
@@ -154,13 +133,13 @@ if __name__ == "__main__":
     N=4000
     dat=[]
     for i in tqdm.trange(N):
-        dat.append(bounce_vec(res=res, n=n, T=T, r=r))
+        dat.append(bounce_vec(res=res, n=n, T=T, r=r, m=m))
     train=np.array(dat)
     
     N=200
     dat=[]
     for i in tqdm.trange(N):
-        dat.append(bounce_vec(res=res, n=n, T=T, r=r))
+        dat.append(bounce_vec(res=res, n=n, T=T, r=r, m=m))
     test=np.array(dat)
 
     print("writing bouncing_balls_train.npy...")
@@ -170,7 +149,7 @@ if __name__ == "__main__":
     np.save("bouncing_balls_test.npy", test)
     
     # show one video
-    # show_sample(dat[1], res)
+    # show_sample(dat[1])
     # ffmpeg -start_number 0 -i %d.png -c:v libx264 -pix_fmt yuv420p -r 30 sample.mp4
 
         
